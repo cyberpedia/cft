@@ -6,8 +6,14 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 
-from .models import User, Challenge, Solve
-from .serializers import UserSerializer, ChallengeListSerializer, ChallengeDetailSerializer, FlagSubmissionSerializer
+from .models import User, Challenge, Solve, Hint, UnlockedHint
+from .serializers import (
+    UserSerializer,
+    ChallengeListSerializer,
+    ChallengeDetailSerializer,
+    FlagSubmissionSerializer,
+    HintSerializer
+)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -57,6 +63,15 @@ class ChallengeDetailView(generics.RetrieveAPIView):
     queryset = Challenge.objects.filter(is_published=True)
     serializer_class = ChallengeDetailSerializer
     permission_classes = (IsAuthenticated,)
+
+    def get_serializer_context(self):
+        """
+        Passes the request context to the serializer,
+        which is needed by the HintSerializer to determine if a hint is unlocked.
+        """
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
 
 class SubmitFlagView(APIView):
@@ -116,3 +131,46 @@ class SubmitFlagView(APIView):
                 {"detail": "Incorrect flag."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class UnlockHintView(APIView):
+    """
+    API endpoint for users to unlock a hint for a challenge.
+    Requires authentication.
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, pk, *args, **kwargs):
+        """
+        Allows an authenticated user to unlock a specific hint.
+        Deducts cost from user's score and creates an UnlockedHint record.
+        """
+        hint = get_object_or_404(Hint, pk=pk)
+        user = request.user
+
+        # Check if the user has already unlocked this hint
+        if UnlockedHint.objects.filter(user=user, hint=hint).exists():
+            return Response(
+                {"detail": "You have already unlocked this hint."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if the user has enough score to unlock the hint
+        if user.score < hint.cost:
+            return Response(
+                {"detail": f"Insufficient score. You need {hint.cost} points to unlock this hint."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        with transaction.atomic():
+            # Deduct points from user's score
+            user.score -= hint.cost
+            user.save()
+
+            # Create an UnlockedHint record
+            UnlockedHint.objects.create(user=user, hint=hint)
+
+        return Response(
+            {"detail": "Hint unlocked successfully!", "cost_deducted": hint.cost},
+            status=status.HTTP_200_OK
+        )
