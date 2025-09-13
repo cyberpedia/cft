@@ -2,7 +2,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import User, Team, Tag, Challenge, Solve
+from .models import User, Team, Tag, Challenge, Hint, UnlockedHint, Solve
 
 
 # Register Team model
@@ -38,14 +38,39 @@ class TagAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
 
+class HintInline(admin.TabularInline):
+    """
+    Inline admin for Hints, allowing them to be managed directly within the Challenge admin.
+    """
+    model = Hint
+    extra = 1 # Number of empty forms to display
+
+
 # Register Challenge model
 @admin.register(Challenge)
 class ChallengeAdmin(admin.ModelAdmin):
     list_display = ('name', 'points', 'is_published', 'is_dynamic', 'first_blood', 'created_at', 'updated_at')
     list_filter = ('is_published', 'is_dynamic', 'tags')
     search_fields = ('name', 'description', 'flag')
-    # Automatically populate the many-to-many field for tags
     filter_horizontal = ('tags',)
+    inlines = [HintInline] # Add HintInline to ChallengeAdmin
+
+
+# Register Hint model
+@admin.register(Hint)
+class HintAdmin(admin.ModelAdmin):
+    list_display = ('challenge', 'text', 'cost', 'created_at')
+    list_filter = ('challenge',)
+    search_fields = ('text', 'challenge__name')
+
+
+# Register UnlockedHint model
+@admin.register(UnlockedHint)
+class UnlockedHintAdmin(admin.ModelAdmin):
+    list_display = ('user', 'hint', 'unlocked_at')
+    list_filter = ('user', 'hint__challenge')
+    search_fields = ('user__username', 'hint__challenge__name', 'hint__text')
+    readonly_fields = ('unlocked_at',)
 
 
 # Register Solve model
