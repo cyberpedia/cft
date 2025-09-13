@@ -83,6 +83,12 @@ class Challenge(models.Model):
     )
     is_published = models.BooleanField(default=False, help_text="Whether the challenge is visible to players.")
     is_dynamic = models.BooleanField(default=False, help_text="True if this is a dynamic challenge (e.g., KoTH, AWD).")
+    file = models.FileField(
+        upload_to='challenge_files/',
+        null=True,
+        blank=True,
+        help_text="Optional file attachment for the challenge."
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     first_blood = models.ForeignKey(
@@ -93,7 +99,6 @@ class Challenge(models.Model):
         related_name='first_bloods',
         help_text="The user who achieved 'First Blood' on this challenge."
     )
-    # Potentially add fields for file attachments, hints, etc. later
 
     class Meta:
         verbose_name = "Challenge"
@@ -102,6 +107,56 @@ class Challenge(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Hint(models.Model):
+    """
+    Represents a hint for a specific challenge.
+    Hints can have a cost associated with them.
+    """
+    challenge = models.ForeignKey(
+        Challenge,
+        on_delete=models.CASCADE,
+        related_name='hints',
+        help_text="The challenge this hint belongs to."
+    )
+    text = models.TextField(help_text="The content of the hint.")
+    cost = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0)],
+        help_text="Points required to unlock this hint. Default is 0 (free)."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Hint"
+        verbose_name_plural = "Hints"
+        ordering = ['challenge', 'cost']
+
+    def __str__(self):
+        return f"Hint for '{self.challenge.name}' (Cost: {self.cost})"
+
+
+class UnlockedHint(models.Model):
+    """
+    Tracks which users have unlocked which hints.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='unlocked_hints', help_text="The user who unlocked the hint.")
+    hint = models.ForeignKey(Hint, on_delete=models.CASCADE, related_name='unlocked_by', help_text="The hint that was unlocked.")
+    unlocked_at = models.DateTimeField(auto_now_add=True, help_text="Timestamp when the hint was unlocked.")
+
+    class Meta:
+        verbose_name = "Unlocked Hint"
+        verbose_name_plural = "Unlocked Hints"
+        # Ensure a user can only unlock a specific hint once
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'hint'], name='unique_user_hint_unlock')
+        ]
+        ordering = ['-unlocked_at']
+
+    def __str__(self):
+        return f"{self.user.username} unlocked hint for '{self.hint.challenge.name}' (ID: {self.hint.id})"
 
 
 class Solve(models.Model):
