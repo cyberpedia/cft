@@ -11,6 +11,7 @@ from .views import (
     TeamDetailView,
     JoinTeamView,
     LeaveTeamView,
+    LeaderboardView,
 )
 
 urlpatterns = [
@@ -27,5 +28,7 @@ urlpatterns = [
     path('teams/<int:pk>/', TeamDetailView.as_view(), name='team_detail'),
     path('teams/<int:pk>/join/', JoinTeamView.as_view(), name='team_join'),
     path('teams/leave/', LeaveTeamView.as_view(), name='team_leave'),
+    
+    path('leaderboard/', LeaderboardView.as_view(), name='leaderboard'),
     # Other API paths will be added here
 ]
