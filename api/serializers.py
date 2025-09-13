@@ -174,3 +174,13 @@ class TeamCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team
         fields = ('name',)
+
+
+class LeaderboardSerializer(serializers.Serializer):
+    """
+    Serializer for the leaderboard, showing team ID, name, total score, and last solve time.
+    """
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    total_score = serializers.IntegerField(read_only=True)
+    last_solve_time = serializers.DateTimeField(read_only=True, allow_null=True)
