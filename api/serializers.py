@@ -1,7 +1,7 @@
 # api/serializers.py
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
-from .models import User, Team, Tag, Challenge, Hint, UnlockedHint, Solve, WriteUp
+from .models import User, Team, Tag, Challenge, Hint, UnlockedHint, Solve, WriteUp, ContentPage
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -271,3 +271,13 @@ class AdminChallengeSerializer(serializers.ModelSerializer):
             'updated_at', 'first_blood'
         )
         read_only_fields = ('created_at', 'updated_at', 'first_blood') # These are managed by the system
+
+
+class ContentPageSerializer(serializers.ModelSerializer):
+    """
+    Serializer for ContentPage model, used for both public viewing and admin management.
+    """
+    class Meta:
+        model = ContentPage
+        fields = ('id', 'slug', 'title', 'content', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at')
