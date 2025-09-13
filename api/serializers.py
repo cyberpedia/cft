@@ -90,7 +90,13 @@ class ChallengeDetailSerializer(serializers.ModelSerializer):
         model = Challenge
         fields = ('id', 'name', 'points', 'description', 'tags')
         # Explicitly exclude the 'flag' field for security reasons
+        # read_only_fields handles this by making all other fields read-only
         read_only_fields = ('id', 'name', 'points', 'description', 'tags', 'is_published', 'is_dynamic', 'created_at', 'updated_at', 'first_blood')
-        # If you were to use 'exclude', it would look like:
-        # exclude = ('flag',)
-        # But 'fields' is preferred for clarity and security when excluding critical data.
+
+
+class FlagSubmissionSerializer(serializers.Serializer):
+    """
+    Serializer for submitting a flag to a challenge.
+    Contains a single field: 'flag'.
+    """
+    flag = serializers.CharField(max_length=255, required=True, help_text="The flag to submit for the challenge.")
