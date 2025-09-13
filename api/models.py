@@ -2,6 +2,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 class Team(models.Model):
@@ -72,7 +74,22 @@ class Challenge(models.Model):
     points = models.IntegerField(
         default=0,
         validators=[MinValueValidator(0)],
-        help_text="Base points for solving this challenge. For dynamic challenges, this is the initial maximum points."
+        help_text="Current points for solving this challenge. Updates dynamically if dynamic scoring is enabled."
+    )
+    initial_points = models.IntegerField(
+        default=500,
+        validators=[MinValueValidator(0)],
+        help_text="Starting points for this challenge (used in dynamic scoring)."
+    )
+    minimum_points = models.IntegerField(
+        default=50,
+        validators=[MinValueValidator(0)],
+        help_text="Minimum points this challenge can drop to (used in dynamic scoring)."
+    )
+    decay_factor = models.IntegerField(
+        default=10,
+        validators=[MinValueValidator(0)],
+        help_text="Points to deduct per solve for dynamic challenges. E.g., 10 points per solve."
     )
     flag = models.CharField(max_length=255, unique=False, help_text="The flag string for this challenge.")
     tags = models.ManyToManyField(
@@ -107,6 +124,23 @@ class Challenge(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        # When a challenge is first created, or if it becomes dynamic,
+        # set its current points to initial_points.
+        if self.is_dynamic and not self.pk: # For new dynamic challenges
+             self.points = self.initial_points
+        elif self.is_dynamic and self.initial_points != self._original_initial_points: # If initial_points changed
+            self.points = self.initial_points
+        elif not self.is_dynamic and self.initial_points != self._original_initial_points: # If it's static and initial_points changed, points should also change.
+            self.points = self.initial_points
+
+        super().save(*args, **kwargs)
+
+    # Store original initial_points to detect changes in save method
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_initial_points = self.initial_points
 
 
 class Hint(models.Model):
@@ -180,3 +214,50 @@ class Solve(models.Model):
 
     def __str__(self):
         return f"{self.user.username} solved {self.challenge.name} at {self.solved_at.strftime('%Y-%m-%d %H:%M:%S')}"
+
+
+class CTFSetting(models.Model):
+    """
+    Singleton model to store global CTF settings like scoring mode.
+    Ensures only one instance of this model can exist.
+    """
+    SCORING_MODE_CHOICES = [
+        ('static', 'Static Scoring'),
+        ('dynamic', 'Dynamic Scoring'),
+    ]
+    scoring_mode = models.CharField(
+        max_length=10,
+        choices=SCORING_MODE_CHOICES,
+        default='static',
+        help_text="Defines how challenge points are awarded and updated."
+    )
+    # Add other global settings here as needed (e.g., event start/end times)
+
+    class Meta:
+        verbose_name = "CTF Setting"
+        verbose_name_plural = "CTF Settings"
+
+    def __str__(self):
+        return "CTF Global Settings"
+
+    def save(self, *args, **kwargs):
+        # Ensure only one instance of CTFSetting exists
+        if CTFSetting.objects.exists() and not self.pk:
+            # If an instance already exists and we are trying to create a new one,
+            # retrieve the existing one and update it instead.
+            existing_setting = CTFSetting.objects.first()
+            self.pk = existing_setting.pk
+            # Update fields from the new instance to the existing one.
+            existing_setting.scoring_mode = self.scoring_mode
+            # ... update other fields as they are added
+            super(CTFSetting, existing_setting).save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        """
+        Loads the single CTFSetting instance, creating it if it doesn't exist.
+        """
+        obj, created = cls.objects.get_or_create(pk=1) # Always use pk=1 for singleton
+        return obj
