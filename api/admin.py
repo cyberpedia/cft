@@ -1,8 +1,10 @@
 # api/admin.py
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db import transaction
+from django.contrib import messages
 
-from .models import User, Team, Tag, Challenge, Hint, UnlockedHint, Solve, CTFSetting
+from .models import User, Team, Tag, Challenge, Hint, UnlockedHint, Solve, CTFSetting, WriteUp
 
 
 # Register Team model
@@ -60,7 +62,7 @@ class ChallengeAdmin(admin.ModelAdmin):
         }),
         ('Scoring', {
             'fields': ('initial_points', 'minimum_points', 'decay_factor', 'points'),
-            'description': 'For dynamic challenges, "Points" will be updated automatically. For static challenges, "Points" should be set to "Initial Points".'
+            'description': 'For dynamic challenges, "Points" will be updated automatically by solves. For static challenges, "Points" should be set to "Initial Points".'
         }),
         ('Meta Information', {
             'fields': ('first_blood', 'created_at', 'updated_at'),
@@ -106,3 +108,44 @@ class CTFSettingAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False # Prevent deletion
+
+
+@admin.register(WriteUp)
+class WriteUpAdmin(admin.ModelAdmin):
+    list_display = ('challenge', 'user', 'status', 'submitted_at')
+    list_filter = ('status', 'challenge', 'user')
+    search_fields = ('challenge__name', 'user__username', 'content')
+    actions = ['approve_writeups']
+
+    def approve_writeups(self, request, queryset):
+        """
+        Admin action to approve selected pending write-ups and award bonus points.
+        """
+        # Define bonus points for write-ups
+        BONUS_POINTS_FOR_WRITEUP = 50
+        
+        with transaction.atomic():
+            approved_count = 0
+            for writeup in queryset.filter(status='pending'):
+                writeup.status = 'approved'
+                writeup.save()
+                
+                # Award bonus points to the user
+                user = writeup.user
+                user.score += BONUS_POINTS_FOR_WRITEUP
+                user.save()
+                approved_count += 1
+            
+            if approved_count > 0:
+                self.message_user(
+                    request,
+                    f"{approved_count} write-up(s) approved and {BONUS_POINTS_FOR_WRITEUP} bonus points awarded to each user.",
+                    messages.SUCCESS
+                )
+            else:
+                self.message_user(
+                    request,
+                    "No pending write-ups were selected or approved.",
+                    messages.WARNING
+                )
+    approve_writeups.short_description = "Approve selected write-ups and award bonus points"
