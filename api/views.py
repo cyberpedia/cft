@@ -5,11 +5,11 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from django.db.models import Sum, Max
+from django.db.models import Sum, Max, Count
 from django.db.models.functions import Coalesce # Import Coalesce for handling NULLs
 from rest_framework.exceptions import ValidationError
 
-from .models import User, Challenge, Solve, Hint, UnlockedHint, Team
+from .models import User, Challenge, Solve, Hint, UnlockedHint, Team, CTFSetting
 from .serializers import (
     UserSerializer,
     ChallengeListSerializer,
@@ -92,6 +92,7 @@ class SubmitFlagView(APIView):
     def post(self, request, pk, *args, **kwargs):
         """
         Handles the submission of a flag for a specific challenge.
+        Implements dynamic scoring logic based on CTFSetting.
         """
         challenge = get_object_or_404(Challenge, pk=pk, is_published=True)
         user = request.user
@@ -112,15 +113,35 @@ class SubmitFlagView(APIView):
         if submitted_flag.strip().lower() == challenge.flag.strip().lower():
             # Flag is correct
             with transaction.atomic():
-                # Create a Solve record
+                ctf_settings = CTFSetting.load()
+                points_awarded_for_this_solve = challenge.points # Default to current points
+
+                if ctf_settings.scoring_mode == 'dynamic' and challenge.is_dynamic:
+                    # Calculate current number of solves for this challenge *before* this solve
+                    current_solves_count = Solve.objects.filter(challenge=challenge).count()
+
+                    # Apply dynamic scoring formula: points decay linearly per solve
+                    # points = max(minimum_points, initial_points - (num_solves * decay_factor))
+                    calculated_points = max(
+                        challenge.minimum_points,
+                        challenge.initial_points - (current_solves_count * challenge.decay_factor)
+                    )
+                    
+                    points_awarded_for_this_solve = calculated_points # Points for the current solver
+
+                    # Update the challenge's current points for *future* solves
+                    challenge.points = calculated_points
+                    challenge.save()
+                
+                # Create a Solve record with the points awarded to THIS user
                 Solve.objects.create(
                     user=user,
                     challenge=challenge,
-                    points_awarded=challenge.points # For static scoring initially
+                    points_awarded=points_awarded_for_this_solve
                 )
 
                 # Update user's score
-                user.score += challenge.points
+                user.score += points_awarded_for_this_solve
                 user.save()
 
                 # Check for first blood if not already set
@@ -129,7 +150,7 @@ class SubmitFlagView(APIView):
                     challenge.save()
 
             return Response(
-                {"detail": "Flag submitted successfully!", "points_awarded": challenge.points},
+                {"detail": "Flag submitted successfully!", "points_awarded": points_awarded_for_this_solve},
                 status=status.HTTP_200_OK
             )
         else:
