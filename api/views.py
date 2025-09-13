@@ -14,7 +14,7 @@ from rest_framework.exceptions import ValidationError
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-from .models import User, Challenge, Solve, Hint, UnlockedHint, Team, CTFSetting, WriteUp
+from .models import User, Challenge, Solve, Hint, UnlockedHint, Team, CTFSetting, WriteUp, ContentPage
 from .serializers import (
     UserSerializer,
     ChallengeListSerializer,
@@ -26,6 +26,7 @@ from .serializers import (
     TeamCreateSerializer,
     LeaderboardSerializer,
     WriteUpSubmitSerializer,
+    ContentPageSerializer,
 )
 from .permissions import CanSubmitWriteUp
 
@@ -142,7 +143,7 @@ class SubmitFlagView(APIView):
                     challenge.save()
                 
                 # Create a Solve record
-                Solve.objects.create(
+                solve_instance = Solve.objects.create(
                     user=user,
                     challenge=challenge,
                     points_awarded=points_awarded_for_this_solve
@@ -167,7 +168,7 @@ class SubmitFlagView(APIView):
                         'user': user.username,
                         'challenge': challenge.name,
                         'points': points_awarded_for_this_solve,
-                        'timestamp': str(Solve.objects.filter(user=user, challenge=challenge).first().solved_at) # Get actual solve timestamp
+                        'timestamp': str(solve_instance.solved_at) # Get actual solve timestamp
                     }
                 }
             )
@@ -354,3 +355,14 @@ class WriteUpSubmitView(generics.CreateAPIView):
         Sets the submitting user and initial status to 'pending'.
         """
         serializer.save(user=self.request.user, status='pending')
+
+
+class ContentPageView(generics.RetrieveAPIView):
+    """
+    API endpoint for publicly viewing content pages by slug.
+    Accessible by any user (authenticated or unauthenticated).
+    """
+    queryset = ContentPage.objects.all()
+    serializer_class = ContentPageSerializer
+    lookup_field = 'slug' # Use the 'slug' field to look up content pages
+    permission_classes = (AllowAny,)
