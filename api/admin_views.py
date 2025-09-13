@@ -1,8 +1,8 @@
 # api/admin_views.py
 from rest_framework import viewsets
 from rest_framework.permissions import IsAdminUser
-from .models import User, Team
-from .serializers import AdminUserSerializer, AdminTeamSerializer
+from .models import User, Team, Challenge, Tag
+from .serializers import AdminUserSerializer, AdminTeamSerializer, AdminChallengeSerializer, AdminTagSerializer
 
 
 class UserManagementViewSet(viewsets.ModelViewSet):
@@ -24,4 +24,26 @@ class TeamManagementViewSet(viewsets.ModelViewSet):
     """
     queryset = Team.objects.all().order_by('name')
     serializer_class = AdminTeamSerializer
+    permission_classes = [IsAdminUser]
+
+
+class TagManagementViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for administrators to manage challenge tags.
+    Provides CRUD operations for Tag model instances.
+    Requires admin privileges.
+    """
+    queryset = Tag.objects.all().order_by('name')
+    serializer_class = AdminTagSerializer
+    permission_classes = [IsAdminUser]
+
+
+class ChallengeManagementViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for administrators to manage challenges.
+    Provides CRUD operations for Challenge model instances, including flag and all scoring details.
+    Requires admin privileges.
+    """
+    queryset = Challenge.objects.all().order_by('name')
+    serializer_class = AdminChallengeSerializer
     permission_classes = [IsAdminUser]
