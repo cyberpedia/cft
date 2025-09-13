@@ -29,4 +29,6 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     # Include API app URLs under the '/api/' path
     path('api/', include('api.urls')),
+    # Include Admin API URLs under the '/api/admin/' path
+    path('api/admin/', include('api.admin_urls')),
 ]
