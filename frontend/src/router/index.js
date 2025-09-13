@@ -4,6 +4,7 @@ import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import ChallengesView from '../views/ChallengesView.vue'
+import ChallengeDetailView from '../views/ChallengeDetailView.vue' // New import
 import LeaderboardView from '../views/LeaderboardView.vue'
 import TeamsView from '../views/TeamsView.vue'
 
@@ -35,6 +36,13 @@ const router = createRouter({
       path: '/challenges',
       name: 'challenges',
       component: ChallengesView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/challenges/:id', // New route for challenge detail
+      name: 'challenge-detail',
+      component: ChallengeDetailView,
+      props: true, // Allows component to receive route params as props
       meta: { requiresAuth: true }
     },
     {
