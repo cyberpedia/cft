@@ -1,7 +1,8 @@
 # api/serializers.py
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
-from .models import User, Team
+from .models import User, Team, Tag, Challenge, Solve
+
 
 class UserSerializer(serializers.ModelSerializer):
     """
@@ -54,3 +55,42 @@ class UserSerializer(serializers.ModelSerializer):
             
         # Update other allowed fields (email, first_name, last_name)
         return super().update(instance, validated_data)
+
+
+class TagSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Tag model.
+    """
+    class Meta:
+        model = Tag
+        fields = ('id', 'name')
+
+
+class ChallengeListSerializer(serializers.ModelSerializer):
+    """
+    Serializer for listing challenges.
+    Includes id, name, points, and tags.
+    """
+    tags = TagSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Challenge
+        fields = ('id', 'name', 'points', 'tags')
+
+
+class ChallengeDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer for retrieving a single challenge's details.
+    Includes id, name, points, description, and tags.
+    Crucially, the 'flag' field is explicitly excluded.
+    """
+    tags = TagSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Challenge
+        fields = ('id', 'name', 'points', 'description', 'tags')
+        # Explicitly exclude the 'flag' field for security reasons
+        read_only_fields = ('id', 'name', 'points', 'description', 'tags', 'is_published', 'is_dynamic', 'created_at', 'updated_at', 'first_blood')
+        # If you were to use 'exclude', it would look like:
+        # exclude = ('flag',)
+        # But 'fields' is preferred for clarity and security when excluding critical data.
