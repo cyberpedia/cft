@@ -23,12 +23,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-@e^z-8h+g#&c!5%9*r+!s06s=i%0(f&z=^g0x9!p#m)1g!n7m3' # Placeholder
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-@e^z-8h+g#&c!5%9*r+!s06s=i%0(f&z=^g0x9!p#m)1g!n7m3') # Placeholder, use env var in production
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',     # Added for CORS handling
     'rest_framework',  # Added for REST API
+    'ratelimit',       # Added for API rate limiting
     'api',             # Our core API app
 ]
 
@@ -84,11 +85,11 @@ ASGI_APPLICATION = 'ctf_platform.asgi.application' # Channels ASGI application
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ctf_db',         # Placeholder database name
-        'USER': 'ctf_user',       # Placeholder database user
-        'PASSWORD': 'ctf_pass',   # Placeholder database password
-        'HOST': 'localhost',      # Or the name of your PostgreSQL service in Docker/Kubernetes
-        'PORT': '5432',
+        'NAME': os.environ.get('POSTGRES_DB', 'ctf_db'),
+        'USER': os.environ.get('POSTGRES_USER', 'ctf_user'),
+        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'ctf_pass'),
+        'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
+        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
     }
 }
 
@@ -130,6 +131,8 @@ USE_TZ = True
 STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media') # Define MEDIA_ROOT for uploaded files
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') # For collecting static files in production
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -140,10 +143,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'api.User'
 
 # CORS Headers settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8080",  # Default Vue.js development server port
-    # Add other frontend origins as needed for production
-]
+# In production, this should be set to the actual frontend URL(s)
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:8080').split(',')
 CORS_ALLOW_CREDENTIALS = True # Allow cookies to be sent with cross-origin requests
 
 # Django REST Framework settings
@@ -209,7 +210,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.pubsub.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("localhost", 6379)], # Placeholder for Redis host and port
+            "hosts": [os.environ.get('REDIS_URL', 'redis://localhost:6379/1')],
         },
     },
 }
