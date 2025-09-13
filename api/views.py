@@ -5,14 +5,18 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from rest_framework.exceptions import ValidationError
 
-from .models import User, Challenge, Solve, Hint, UnlockedHint
+from .models import User, Challenge, Solve, Hint, UnlockedHint, Team
 from .serializers import (
     UserSerializer,
     ChallengeListSerializer,
     ChallengeDetailSerializer,
     FlagSubmissionSerializer,
-    HintSerializer
+    HintSerializer,
+    TeamListSerializer,
+    TeamDetailSerializer,
+    TeamCreateSerializer,
 )
 
 
@@ -172,5 +176,92 @@ class UnlockHintView(APIView):
 
         return Response(
             {"detail": "Hint unlocked successfully!", "cost_deducted": hint.cost},
+            status=status.HTTP_200_OK
+        )
+
+
+class TeamListCreateView(generics.ListCreateAPIView):
+    """
+    API endpoint for listing teams and creating a new team.
+    Authenticated users can list all teams.
+    Authenticated users not in a team can create a new team and automatically join it.
+    """
+    queryset = Team.objects.all().order_by('name')
+    permission_classes = (IsAuthenticated,)
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return TeamCreateSerializer
+        return TeamListSerializer
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.team:
+            raise ValidationError({"detail": "You are already part of a team. Please leave your current team to create a new one."})
+        
+        with transaction.atomic():
+            team = serializer.save()
+            user.team = team
+            user.save()
+
+
+class TeamDetailView(generics.RetrieveAPIView):
+    """
+    API endpoint for retrieving a single team's details, including its members.
+    Requires authentication.
+    """
+    queryset = Team.objects.all()
+    serializer_class = TeamDetailSerializer
+    permission_classes = (IsAuthenticated,)
+
+
+class JoinTeamView(APIView):
+    """
+    API endpoint for an authenticated user to join a specific team.
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, pk, *args, **kwargs):
+        user = request.user
+        team = get_object_or_404(Team, pk=pk)
+
+        if user.team:
+            return Response(
+                {"detail": f"You are already part of a team: {user.team.name}. Please leave your current team to join another."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        with transaction.atomic():
+            user.team = team
+            user.save()
+
+        return Response(
+            {"detail": f"Successfully joined team '{team.name}'."},
+            status=status.HTTP_200_OK
+        )
+
+
+class LeaveTeamView(APIView):
+    """
+    API endpoint for an authenticated user to leave their current team.
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+
+        if not user.team:
+            return Response(
+                {"detail": "You are not currently part of any team."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        team_name = user.team.name
+        with transaction.atomic():
+            user.team = None
+            user.save()
+
+        return Response(
+            {"detail": f"Successfully left team '{team_name}'."},
             status=status.HTTP_200_OK
         )
