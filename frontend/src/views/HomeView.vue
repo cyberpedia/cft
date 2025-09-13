@@ -1,7 +1,7 @@
 # frontend/src/views/HomeView.vue
 <template>
-  <div class="flex-grow flex items-center justify-center p-6">
-    <div class="text-center">
+  <div class="container mx-auto p-6">
+    <div class="text-center mb-8">
       <h1 class="text-5xl font-bold text-blue-400 mb-4">Welcome to the CTF Platform!</h1>
       <p class="text-xl text-gray-300">Your ultimate destination for Capture The Flag competitions.</p>
       
@@ -19,11 +19,15 @@
         </router-link>
       </div>
     </div>
+
+    <!-- Live Activity Feed -->
+    <ActivityFeed />
   </div>
 </template>
 
 <script setup>
 import { useAuthStore } from '@/stores/auth';
+import ActivityFeed from '@/components/ActivityFeed.vue'; // Import the new component
 
 const authStore = useAuthStore();
 </script>
