@@ -1,7 +1,7 @@
 # api/serializers.py
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
-from .models import User, Team, Tag, Challenge, Hint, UnlockedHint, Solve
+from .models import User, Team, Tag, Challenge, Hint, UnlockedHint, Solve, WriteUp
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -184,3 +184,17 @@ class LeaderboardSerializer(serializers.Serializer):
     name = serializers.CharField(read_only=True)
     total_score = serializers.IntegerField(read_only=True)
     last_solve_time = serializers.DateTimeField(read_only=True, allow_null=True)
+
+
+class WriteUpSubmitSerializer(serializers.ModelSerializer):
+    """
+    Serializer for submitting a write-up.
+    Requires challenge ID and content. User and status are set by the view.
+    """
+    class Meta:
+        model = WriteUp
+        fields = ('challenge', 'content')
+        extra_kwargs = {
+            'challenge': {'required': True, 'allow_null': False},
+            'content': {'required': True, 'allow_blank': False},
+        }
