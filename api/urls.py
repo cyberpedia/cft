@@ -13,6 +13,7 @@ from .views import (
     LeaveTeamView,
     LeaderboardView,
     WriteUpSubmitView,
+    ContentPageView,
 )
 
 urlpatterns = [
@@ -33,5 +34,7 @@ urlpatterns = [
     path('leaderboard/', LeaderboardView.as_view(), name='leaderboard'),
 
     path('writeups/', WriteUpSubmitView.as_view(), name='writeup_submit'),
+    
+    path('pages/<slug:slug>/', ContentPageView.as_view(), name='content_page_detail'),
     # Other API paths will be added here
 ]
