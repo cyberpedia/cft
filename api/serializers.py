@@ -245,3 +245,29 @@ class AdminTeamSerializer(serializers.ModelSerializer):
         model = Team
         fields = ('id', 'name', 'created_at', 'updated_at')
         read_only_fields = ('created_at', 'updated_at')
+
+
+class AdminTagSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Tag model, for administrative purposes.
+    """
+    class Meta:
+        model = Tag
+        fields = ('id', 'name', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at')
+
+
+class AdminChallengeSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Challenge model, for administrative purposes.
+    Exposes all fields including the flag and dynamic scoring parameters.
+    """
+    class Meta:
+        model = Challenge
+        fields = (
+            'id', 'name', 'description', 'points', 'initial_points',
+            'minimum_points', 'decay_factor', 'flag', 'tags',
+            'is_published', 'is_dynamic', 'file', 'created_at',
+            'updated_at', 'first_blood'
+        )
+        read_only_fields = ('created_at', 'updated_at', 'first_blood') # These are managed by the system
