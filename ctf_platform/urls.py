@@ -27,6 +27,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    # Other API endpoints will be included here via 'api.urls' later
-    # path('api/', include('api.urls')),
+    # Include API app URLs under the '/api/' path
+    path('api/', include('api.urls')),
 ]
