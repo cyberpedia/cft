@@ -132,3 +132,45 @@ class FlagSubmissionSerializer(serializers.Serializer):
     Contains a single field: 'flag'.
     """
     flag = serializers.CharField(max_length=255, required=True, help_text="The flag to submit for the challenge.")
+
+
+class TeamMemberSerializer(serializers.ModelSerializer):
+    """
+    A simplified UserSerializer for displaying team members.
+    Only shows essential public information.
+    """
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'score')
+        read_only_fields = fields
+
+
+class TeamListSerializer(serializers.ModelSerializer):
+    """
+    Serializer for listing teams.
+    """
+    class Meta:
+        model = Team
+        fields = ('id', 'name')
+
+
+class TeamDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer for retrieving a single team's details, including its members.
+    """
+    members = TeamMemberSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Team
+        fields = ('id', 'name', 'members', 'created_at')
+        read_only_fields = ('id', 'name', 'members', 'created_at')
+
+
+class TeamCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating a new team.
+    Only requires the team name.
+    """
+    class Meta:
+        model = Team
+        fields = ('name',)
