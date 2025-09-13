@@ -2,7 +2,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import User, Team, Tag, Challenge, Hint, UnlockedHint, Solve
+from .models import User, Team, Tag, Challenge, Hint, UnlockedHint, Solve, CTFSetting
 
 
 # Register Team model
@@ -49,11 +49,25 @@ class HintInline(admin.TabularInline):
 # Register Challenge model
 @admin.register(Challenge)
 class ChallengeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'points', 'is_published', 'is_dynamic', 'first_blood', 'created_at', 'updated_at')
+    list_display = ('name', 'points', 'is_published', 'is_dynamic', 'initial_points', 'minimum_points', 'decay_factor', 'first_blood', 'created_at', 'updated_at')
     list_filter = ('is_published', 'is_dynamic', 'tags')
     search_fields = ('name', 'description', 'flag')
     filter_horizontal = ('tags',)
     inlines = [HintInline] # Add HintInline to ChallengeAdmin
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'description', 'flag', 'file', 'tags', 'is_published', 'is_dynamic')
+        }),
+        ('Scoring', {
+            'fields': ('initial_points', 'minimum_points', 'decay_factor', 'points'),
+            'description': 'For dynamic challenges, "Points" will be updated automatically. For static challenges, "Points" should be set to "Initial Points".'
+        }),
+        ('Meta Information', {
+            'fields': ('first_blood', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    readonly_fields = ('points', 'created_at', 'updated_at', 'first_blood') # 'points' is dynamically updated
 
 
 # Register Hint model
@@ -80,3 +94,15 @@ class SolveAdmin(admin.ModelAdmin):
     list_filter = ('solved_at', 'challenge', 'user')
     search_fields = ('user__username', 'challenge__name')
     readonly_fields = ('solved_at', 'points_awarded') # Typically solved_at and points_awarded are set programmatically
+
+
+# Register CTFSetting model
+@admin.register(CTFSetting)
+class CTFSettingAdmin(admin.ModelAdmin):
+    list_display = ('scoring_mode',)
+    # Prevent adding new instances, only allow changing the existing one
+    def has_add_permission(self, request):
+        return not CTFSetting.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False # Prevent deletion
