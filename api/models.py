@@ -126,21 +126,14 @@ class Challenge(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        # When a challenge is first created, or if it becomes dynamic,
-        # set its current points to initial_points.
-        if self.is_dynamic and not self.pk: # For new dynamic challenges
+        # For new challenges or when initial_points changes, update the current points.
+        # For dynamic challenges, this is the starting point before decay.
+        # For static challenges, this is its fixed point value.
+        if not self.is_dynamic or self.pk is None: # If static OR new dynamic challenge
              self.points = self.initial_points
-        elif self.is_dynamic and self.initial_points != self._original_initial_points: # If initial_points changed
-            self.points = self.initial_points
-        elif not self.is_dynamic and self.initial_points != self._original_initial_points: # If it's static and initial_points changed, points should also change.
-            self.points = self.initial_points
-
+        # For existing dynamic challenges, the 'points' field is updated by solve logic.
+        # An admin might manually reset 'points' to 'initial_points' if 'initial_points' or 'decay_factor' change.
         super().save(*args, **kwargs)
-
-    # Store original initial_points to detect changes in save method
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._original_initial_points = self.initial_points
 
 
 class Hint(models.Model):
@@ -261,3 +254,36 @@ class CTFSetting(models.Model):
         """
         obj, created = cls.objects.get_or_create(pk=1) # Always use pk=1 for singleton
         return obj
+
+
+class WriteUp(models.Model):
+    """
+    Model for user-submitted challenge write-ups.
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='writeups', help_text="The user who submitted the write-up.")
+    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name='writeups', help_text="The challenge this write-up is for.")
+    content = models.TextField(help_text="The detailed content of the write-up.")
+    submitted_at = models.DateTimeField(auto_now_add=True, help_text="Timestamp when the write-up was submitted.")
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default='pending',
+        help_text="Current review status of the write-up."
+    )
+
+    class Meta:
+        verbose_name = "Write-Up"
+        verbose_name_plural = "Write-Ups"
+        ordering = ['-submitted_at']
+        # Optionally add a unique constraint if a user can only submit one write-up per challenge
+        # constraints = [
+        #     models.UniqueConstraint(fields=['user', 'challenge'], name='unique_user_challenge_writeup')
+        # ]
+
+    def __str__(self):
+        return f"Write-up for '{self.challenge.name}' by {self.user.username} - Status: {self.status}"
