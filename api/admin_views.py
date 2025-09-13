@@ -1,8 +1,8 @@
 # api/admin_views.py
 from rest_framework import viewsets
 from rest_framework.permissions import IsAdminUser
-from .models import User, Team, Challenge, Tag
-from .serializers import AdminUserSerializer, AdminTeamSerializer, AdminChallengeSerializer, AdminTagSerializer
+from .models import User, Team, Challenge, Tag, ContentPage
+from .serializers import AdminUserSerializer, AdminTeamSerializer, AdminChallengeSerializer, AdminTagSerializer, ContentPageSerializer
 
 
 class UserManagementViewSet(viewsets.ModelViewSet):
@@ -46,4 +46,15 @@ class ChallengeManagementViewSet(viewsets.ModelViewSet):
     """
     queryset = Challenge.objects.all().order_by('name')
     serializer_class = AdminChallengeSerializer
+    permission_classes = [IsAdminUser]
+
+
+class ContentPageManagementViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for administrators to manage content pages.
+    Provides CRUD operations for ContentPage model instances.
+    Requires admin privileges.
+    """
+    queryset = ContentPage.objects.all().order_by('title')
+    serializer_class = ContentPageSerializer
     permission_classes = [IsAdminUser]
