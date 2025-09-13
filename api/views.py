@@ -9,7 +9,7 @@ from django.db.models import Sum, Max, Count
 from django.db.models.functions import Coalesce # Import Coalesce for handling NULLs
 from rest_framework.exceptions import ValidationError
 
-from .models import User, Challenge, Solve, Hint, UnlockedHint, Team, CTFSetting
+from .models import User, Challenge, Solve, Hint, UnlockedHint, Team, CTFSetting, WriteUp
 from .serializers import (
     UserSerializer,
     ChallengeListSerializer,
@@ -20,7 +20,9 @@ from .serializers import (
     TeamDetailSerializer,
     TeamCreateSerializer,
     LeaderboardSerializer,
+    WriteUpSubmitSerializer,
 )
+from .permissions import CanSubmitWriteUp
 
 
 class RegisterView(generics.CreateAPIView):
@@ -315,3 +317,19 @@ class LeaderboardView(generics.ListAPIView):
         ).order_by('-total_score', 'last_solve_time') # Order by score (desc) then by solve time (asc for tie-break)
         
         return queryset
+
+
+class WriteUpSubmitView(generics.CreateAPIView):
+    """
+    API endpoint for users to submit write-ups for challenges they have solved.
+    Requires authentication and the custom CanSubmitWriteUp permission.
+    """
+    queryset = WriteUp.objects.all()
+    serializer_class = WriteUpSubmitSerializer
+    permission_classes = (IsAuthenticated, CanSubmitWriteUp)
+
+    def perform_create(self, serializer):
+        """
+        Sets the submitting user and initial status to 'pending'.
+        """
+        serializer.save(user=self.request.user, status='pending')
