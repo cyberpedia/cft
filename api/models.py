@@ -287,3 +287,22 @@ class WriteUp(models.Model):
 
     def __str__(self):
         return f"Write-up for '{self.challenge.name}' by {self.user.username} - Status: {self.status}"
+
+
+class ContentPage(models.Model):
+    """
+    Model for managing static content pages (e.g., Rules, FAQ, About).
+    """
+    slug = models.SlugField(max_length=255, unique=True, help_text="Unique identifier for the page (used in URL).")
+    title = models.CharField(max_length=255, help_text="The title of the content page.")
+    content = models.TextField(help_text="The HTML or Markdown content of the page (use WYSIWYG editor).")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Content Page"
+        verbose_name_plural = "Content Pages"
+        ordering = ['title']
+
+    def __str__(self):
+        return self.title
