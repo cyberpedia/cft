@@ -1,6 +1,13 @@
 # api/urls.py
 from django.urls import path
-from .views import RegisterView, ProfileView, ChallengeListView, ChallengeDetailView, SubmitFlagView
+from .views import (
+    RegisterView,
+    ProfileView,
+    ChallengeListView,
+    ChallengeDetailView,
+    SubmitFlagView,
+    UnlockHintView,
+)
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -8,5 +15,6 @@ urlpatterns = [
     path('challenges/', ChallengeListView.as_view(), name='challenge_list'),
     path('challenges/<int:pk>/', ChallengeDetailView.as_view(), name='challenge_detail'),
     path('challenges/<int:pk>/submit/', SubmitFlagView.as_view(), name='submit_flag'),
+    path('hints/<int:pk>/unlock/', UnlockHintView.as_view(), name='unlock_hint'),
     # Other API paths will be added here
 ]
