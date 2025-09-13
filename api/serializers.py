@@ -1,7 +1,7 @@
 # api/serializers.py
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password
-from .models import User, Team, Tag, Challenge, Solve
+from .models import User, Team, Tag, Challenge, Hint, UnlockedHint, Solve
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -66,6 +66,37 @@ class TagSerializer(serializers.ModelSerializer):
         fields = ('id', 'name')
 
 
+class HintSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Hint model, conditionally showing text based on unlock status.
+    """
+    is_unlocked = serializers.SerializerMethodField(help_text="True if the current user has unlocked this hint.")
+
+    class Meta:
+        model = Hint
+        fields = ('id', 'cost', 'is_unlocked', 'text')
+        read_only_fields = ('id', 'cost', 'is_unlocked',) # Text is conditionally shown
+
+    def get_is_unlocked(self, obj):
+        """
+        Determines if the request user has unlocked this hint.
+        Requires 'request' in the serializer context.
+        """
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return UnlockedHint.objects.filter(user=request.user, hint=obj).exists()
+        return False
+
+    def to_representation(self, instance):
+        """
+        Conditionally includes the 'text' field based on 'is_unlocked'.
+        """
+        representation = super().to_representation(instance)
+        if not representation.get('is_unlocked'):
+            representation.pop('text', None) # Remove text if not unlocked
+        return representation
+
+
 class ChallengeListSerializer(serializers.ModelSerializer):
     """
     Serializer for listing challenges.
@@ -81,17 +112,18 @@ class ChallengeListSerializer(serializers.ModelSerializer):
 class ChallengeDetailSerializer(serializers.ModelSerializer):
     """
     Serializer for retrieving a single challenge's details.
-    Includes id, name, points, description, and tags.
+    Includes id, name, points, description, file URL, and tags.
     Crucially, the 'flag' field is explicitly excluded.
     """
     tags = TagSerializer(many=True, read_only=True)
+    hints = HintSerializer(many=True, read_only=True) # Nested hints using the new serializer
+    file = serializers.FileField(read_only=True, source='file.url', allow_null=True) # Get URL for the file
 
     class Meta:
         model = Challenge
-        fields = ('id', 'name', 'points', 'description', 'tags')
+        fields = ('id', 'name', 'points', 'description', 'file', 'tags', 'hints')
         # Explicitly exclude the 'flag' field for security reasons
-        # read_only_fields handles this by making all other fields read-only
-        read_only_fields = ('id', 'name', 'points', 'description', 'tags', 'is_published', 'is_dynamic', 'created_at', 'updated_at', 'first_blood')
+        read_only_fields = ('id', 'name', 'points', 'description', 'file', 'tags', 'hints', 'is_published', 'is_dynamic', 'created_at', 'updated_at', 'first_blood')
 
 
 class FlagSubmissionSerializer(serializers.Serializer):
