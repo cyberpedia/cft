@@ -14,6 +14,9 @@ from rest_framework.exceptions import ValidationError
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
+# Rate limiting import
+from ratelimit.decorators import ratelimit
+
 from .models import User, Challenge, Solve, Hint, UnlockedHint, Team, CTFSetting, WriteUp, ContentPage
 from .serializers import (
     UserSerializer,
@@ -31,6 +34,7 @@ from .serializers import (
 from .permissions import CanSubmitWriteUp
 
 
+@ratelimit(key='ip', rate='5/m', block=True) # Rate limit registration attempts by IP
 class RegisterView(generics.CreateAPIView):
     """
     API endpoint for user registration.
@@ -97,6 +101,7 @@ class SubmitFlagView(APIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = FlagSubmissionSerializer # Used for request body validation
 
+    @ratelimit(key='user_or_ip', rate='10/m', block=True) # Rate limit flag submission attempts
     def post(self, request, pk, *args, **kwargs):
         """
         Handles the submission of a flag for a specific challenge.
