@@ -135,3 +135,6 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny', # Will be restricted later
     ]
 }
+
+# Custom User Model
+AUTH_USER_MODEL = 'api.User'
