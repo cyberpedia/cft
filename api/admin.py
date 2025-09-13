@@ -4,7 +4,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.db import transaction
 from django.contrib import messages
 
-from .models import User, Team, Tag, Challenge, Hint, UnlockedHint, Solve, CTFSetting, WriteUp
+from .models import User, Team, Tag, Challenge, Hint, UnlockedHint, Solve, CTFSetting, WriteUp, ContentPage
 
 
 # Register Team model
@@ -149,3 +149,10 @@ class WriteUpAdmin(admin.ModelAdmin):
                     messages.WARNING
                 )
     approve_writeups.short_description = "Approve selected write-ups and award bonus points"
+
+
+@admin.register(ContentPage)
+class ContentPageAdmin(admin.ModelAdmin):
+    list_display = ('title', 'slug', 'created_at', 'updated_at')
+    search_fields = ('title', 'content', 'slug')
+    prepopulated_fields = {'slug': ('title',)} # Automatically populate slug from title
