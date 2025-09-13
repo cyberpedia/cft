@@ -198,3 +198,50 @@ class WriteUpSubmitSerializer(serializers.ModelSerializer):
             'challenge': {'required': True, 'allow_null': False},
             'content': {'required': True, 'allow_blank': False},
         }
+
+# --- Admin Specific Serializers ---
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    """
+    Serializer for User model, for administrative purposes.
+    Exposes all fields needed for management, including team (by ID) and staff status.
+    Handles password hashing on create/update.
+    """
+    password = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'score', 'team', 'is_staff', 'is_active', 'is_superuser', 'password')
+        extra_kwargs = {
+            'password': {'write_only': True, 'required': False},
+        }
+
+    def create(self, validated_data):
+        """
+        Create a new user, ensuring password is hashed and handling superuser status.
+        """
+        password = validated_data.pop('password', None)
+        user = User.objects.create(**validated_data)
+        if password:
+            user.set_password(password)
+            user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        """
+        Update an existing user, handling password hashing.
+        """
+        if 'password' in validated_data:
+            instance.set_password(validated_data.pop('password'))
+        return super().update(instance, validated_data)
+
+
+class AdminTeamSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Team model, for administrative purposes.
+    Exposes all relevant fields for management.
+    """
+    class Meta:
+        model = Team
+        fields = ('id', 'name', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at')
