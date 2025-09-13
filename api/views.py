@@ -1,4 +1,5 @@
 # api/views.py
+import json # Import json for sending messages
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -8,6 +9,10 @@ from django.db import transaction
 from django.db.models import Sum, Max, Count
 from django.db.models.functions import Coalesce # Import Coalesce for handling NULLs
 from rest_framework.exceptions import ValidationError
+
+# Channels imports
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 from .models import User, Challenge, Solve, Hint, UnlockedHint, Team, CTFSetting, WriteUp
 from .serializers import (
@@ -95,6 +100,7 @@ class SubmitFlagView(APIView):
         """
         Handles the submission of a flag for a specific challenge.
         Implements dynamic scoring logic based on CTFSetting.
+        Broadcasts successful solves to the activity feed.
         """
         challenge = get_object_or_404(Challenge, pk=pk, is_published=True)
         user = request.user
@@ -135,7 +141,7 @@ class SubmitFlagView(APIView):
                     challenge.points = calculated_points
                     challenge.save()
                 
-                # Create a Solve record with the points awarded to THIS user
+                # Create a Solve record
                 Solve.objects.create(
                     user=user,
                     challenge=challenge,
@@ -150,6 +156,21 @@ class SubmitFlagView(APIView):
                 if not challenge.first_blood:
                     challenge.first_blood = user
                     challenge.save()
+            
+            # Broadcast the solve event to the activity feed
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                'activity_feed',
+                {
+                    'type': 'feed.message', # This will call the 'feed_message' method in the consumer
+                    'message': {
+                        'user': user.username,
+                        'challenge': challenge.name,
+                        'points': points_awarded_for_this_solve,
+                        'timestamp': str(Solve.objects.filter(user=user, challenge=challenge).first().solved_at) # Get actual solve timestamp
+                    }
+                }
+            )
 
             return Response(
                 {"detail": "Flag submitted successfully!", "points_awarded": points_awarded_for_this_solve},
