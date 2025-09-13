@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.db.models import Sum, Max
+from django.db.models.functions import Coalesce # Import Coalesce for handling NULLs
 from rest_framework.exceptions import ValidationError
 
 from .models import User, Challenge, Solve, Hint, UnlockedHint, Team
@@ -17,6 +19,7 @@ from .serializers import (
     TeamListSerializer,
     TeamDetailSerializer,
     TeamCreateSerializer,
+    LeaderboardSerializer,
 )
 
 
@@ -265,3 +268,29 @@ class LeaveTeamView(APIView):
             {"detail": f"Successfully left team '{team_name}'."},
             status=status.HTTP_200_OK
         )
+
+
+class LeaderboardView(generics.ListAPIView):
+    """
+    API endpoint for displaying the competition leaderboard.
+    Shows teams ordered by total score and last solve time.
+    Requires authentication.
+    """
+    serializer_class = LeaderboardSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        """
+        Constructs a queryset for the leaderboard, annotating teams with
+        their total score and the timestamp of their last solve.
+        """
+        queryset = Team.objects.annotate(
+            # Calculate total score for each team by summing scores of all its members.
+            # Coalesce handles cases where a team has no members or members have no score, defaulting to 0.
+            total_score=Coalesce(Sum('members__score'), 0, output_field=models.IntegerField()),
+            # Find the latest solve time among all members of the team.
+            # Coalesce handles teams with no solves by defaulting to NULL.
+            last_solve_time=Coalesce(Max('members__solves__solved_at'), None, output_field=models.DateTimeField())
+        ).order_by('-total_score', 'last_solve_time') # Order by score (desc) then by solve time (asc for tie-break)
+        
+        return queryset
