@@ -1,12 +1,17 @@
 # frontend/src/App.vue
 <template>
   <div id="app" class="min-h-screen flex flex-col">
-    <router-view />
+    <NavBar />
+    <main class="flex-grow">
+      <router-view />
+    </main>
+    <Footer />
   </div>
 </template>
 
 <script setup>
-// No script logic needed for the root App component yet, just houses the router-view
+import NavBar from '@/components/NavBar.vue';
+import Footer from '@/components/Footer.vue';
 </script>
 
 <style scoped>
