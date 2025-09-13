@@ -1,8 +1,8 @@
 # api/views.py
 from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from .models import User
-from .serializers import UserSerializer
+from .models import User, Challenge
+from .serializers import UserSerializer, ChallengeListSerializer, ChallengeDetailSerializer
 
 
 class RegisterView(generics.CreateAPIView):
@@ -30,3 +30,25 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         This ensures users can only view and update their own profiles.
         """
         return self.request.user
+
+
+class ChallengeListView(generics.ListAPIView):
+    """
+    API endpoint for listing all published challenges.
+    Only includes challenges where is_published is True.
+    Requires authentication.
+    """
+    queryset = Challenge.objects.filter(is_published=True).order_by('points', 'name')
+    serializer_class = ChallengeListSerializer
+    permission_classes = (IsAuthenticated,)
+
+
+class ChallengeDetailView(generics.RetrieveAPIView):
+    """
+    API endpoint for retrieving a single published challenge's details.
+    Only allows access to challenges where is_published is True.
+    Requires authentication.
+    """
+    queryset = Challenge.objects.filter(is_published=True)
+    serializer_class = ChallengeDetailSerializer
+    permission_classes = (IsAuthenticated,)
